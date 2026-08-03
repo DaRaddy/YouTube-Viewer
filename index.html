@@ -1,1 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy YouTube Viewer</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-card: #1e1e1e;
+            --accent: #ff0000;
+            --text-main: #ffffff;
+            --text-sub: #aaaaaa;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .header h1 {
+            margin: 0 0 5px 0;
+            font-size: 2rem;
+        }
+        .header p {
+            color: var(--text-sub);
+            margin: 0;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            background: var(--bg-card);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        input[type="text"] {
+            flex: 1;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            padding: 12px;
+            color: white;
+            border-radius: 6px;
+            font-size: 1rem;
+            outline: none;
+        }
+        input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0 24px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .player-wrapper {
+            background: var(--bg-card);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            aspect-ratio: 16/9;
+            width: 100%;
+            position: relative;
+        }
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .placeholder {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: var(--text-sub);
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .history-panel {
+            background: var(--bg-card);
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .history-panel h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+        }
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .history-item {
+            padding: 8px;
+            background: #2a2a2a;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: background 0.2s;
+        }
+        .history-item:hover {
+            background: #3a3a3a;
+        }
+    </style>
+</head>
+<body>
 
+<div class="container">
+    <div class="header">
+        <h1>Static Privacy Player</h1>
+        <p>Loads videos through tracking-disabled embeds to strip ads.</p>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="videoUrl" placeholder="Paste YouTube link or Video ID here (e.g., https://youtube.com)">
+        <button onclick="loadVideo()">Watch</button>
+    </div>
+
+    <div class="main-layout">
+        <div class="player-wrapper" id="playerContainer">
+            <div class="placeholder">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" style="color: var(--accent); margin-bottom: 15px;">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <p>Enter a video URL above to launch the clean player frame.</p>
+            </div>
+        </div>
+
+        <div class="history-panel">
+            <h3>Recent Items</h3>
+            <ul class="history-list" id="historyList"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Extract video ID via regex pattern match from YouTube links
+    function extractVideoId(url) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : url.trim();
+    }
+
+    function loadVideo(forcedId = null) {
+        const inputVal = document.getElementById('videoUrl').value;
+        const videoId = forcedId || extractVideoId(inputVal);
+        const playerContainer = document.getElementById('playerContainer');
+
+        if (!videoId || videoId.length !== 11) {
+            alert('Please present a valid 11-character YouTube video ID or full stream link.');
+            return;
+        }
+
+        // Construct tracking-disabled clean cookie embed link
+        const embedUrl = `https://youtube-nocookie.com{videoId}?autoplay=1&modestbranding=1&rel=0`;
+        
+        // Update DOM
+        playerContainer.innerHTML = `<iframe src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        
+        if (!forcedId) {
+            saveToHistory(videoId);
+        }
+    }
+
+    function saveToHistory(id) {
+        let history = JSON.parse(localStorage.getItem('yt_viewer_history') || '[]');
+        if (!history.includes(id)) {
+            history.unshift(id);
+            if (history.length > 10) history.pop(); // Cap history length at 10 items
+            localStorage.setItem('yt_viewer_history', JSON.stringify(history));
+            renderHistory();
+        }
+    }
+
+    function renderHistory() {
+        const list = document.getElementById('historyList');
+        const history = JSON.parse(localStorage.getItem('yt_viewer_history') || '[]');
+        
+        if (history.length === 0) {
+            list.innerHTML = '<li style="color: var(--text-sub); font-size: 0.85rem;">No history items found</li>';
+            return;
+        }
+
+        list.innerHTML = history.map(id => `
+            <li class="history-item" onclick="loadVideo('${id}')" title="Play ID: ${id}">
+                ID: ${id}
+            </li>
+        `).join('');
+    }
+
+    // Auto-render local storage items when page is initialized
+    document.addEventListener("DOMContentLoaded", renderHistory);
+    
+    // Allow pressing Enter key inside search box to trigger script execution
+    document.getElementById('videoUrl').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            loadVideo();
+        }
+    });
+</script>
+
+</body>
+</html>
