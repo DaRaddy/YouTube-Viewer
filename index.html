@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy YouTube Viewer</title>
+    <title>Direct YouTube Client</title>
     <style>
         :root {
-            --bg-dark: #121212;
-            --bg-card: #1e1e1e;
+            --bg-dark: #0f0f0f;
+            --bg-card: #1f1f1f;
             --accent: #ff0000;
             --text-main: #ffffff;
             --text-sub: #aaaaaa;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             background-color: var(--bg-dark);
             color: var(--text-main);
             margin: 0;
@@ -53,8 +53,8 @@
         }
         input[type="text"] {
             flex: 1;
-            background: #2a2a2a;
-            border: 1px solid #444;
+            background: #2b2b2b;
+            border: 1px solid #3f3f3f;
             padding: 12px;
             color: white;
             border-radius: 6px;
@@ -138,7 +138,7 @@
         }
         .history-item {
             padding: 8px;
-            background: #2a2a2a;
+            background: #2b2b2b;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.9rem;
@@ -148,7 +148,7 @@
             transition: background 0.2s;
         }
         .history-item:hover {
-            background: #3a3a3a;
+            background: #3b3b3b;
         }
     </style>
 </head>
@@ -156,13 +156,13 @@
 
 <div class="container">
     <div class="header">
-        <h1>Static Privacy Player</h1>
-        <p>Loads videos through tracking-disabled embeds to strip ads.</p>
+        <h1>Direct YouTube App Client</h1>
+        <p>Establishes a direct connection via core YouTube video endpoints.</p>
     </div>
 
     <div class="search-box">
-        <input type="text" id="videoUrl" placeholder="Paste YouTube link or Video ID here (e.g., https://youtube.com)">
-        <button onclick="loadVideo()">Watch</button>
+        <input type="text" id="videoUrl" placeholder="Paste YouTube link or Video ID (e.g., https://youtube.com)">
+        <button onclick="loadVideo()">Stream</button>
     </div>
 
     <div class="main-layout">
@@ -171,7 +171,7 @@
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" style="color: var(--accent); margin-bottom: 15px;">
                     <path d="M8 5v14l11-7z"/>
                 </svg>
-                <p>Enter a video URL above to launch the clean player frame.</p>
+                <p>Provide a video web URL or ID to load the native media container.</p>
             </div>
         </div>
 
@@ -183,11 +183,11 @@
 </div>
 
 <script>
-    // Extract video ID via regex pattern match from YouTube links
+    // Extract video ID from any standard or shortened YouTube URL structure
     function extractVideoId(url) {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : url.trim();
+        return (match && match.length === 12 || (match && match[2].length === 11)) ? match[2] : url.trim();
     }
 
     function loadVideo(forcedId = null) {
@@ -196,14 +196,14 @@
         const playerContainer = document.getElementById('playerContainer');
 
         if (!videoId || videoId.length !== 11) {
-            alert('Please present a valid 11-character YouTube video ID or full stream link.');
+            alert('Error: Please enter a valid 11-digit YouTube video sequence.');
             return;
         }
 
-        // Construct tracking-disabled clean cookie embed link
-        const embedUrl = `https://youtube-nocookie.com{videoId}?autoplay=1&modestbranding=1&rel=0`;
+        // Pointing directly to the primary youtube.com cluster to bypass server resolution issues
+        const embedUrl = `https://youtube.com{videoId}?autoplay=1&modestbranding=1&rel=0`;
         
-        // Update DOM
+        // Rewrite active viewport frame
         playerContainer.innerHTML = `<iframe src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
         
         if (!forcedId) {
@@ -212,35 +212,33 @@
     }
 
     function saveToHistory(id) {
-        let history = JSON.parse(localStorage.getItem('yt_viewer_history') || '[]');
+        let history = JSON.parse(localStorage.getItem('yt_direct_history') || '[]');
         if (!history.includes(id)) {
             history.unshift(id);
-            if (history.length > 10) history.pop(); // Cap history length at 10 items
-            localStorage.setItem('yt_viewer_history', JSON.stringify(history));
+            if (history.length > 8) history.pop(); // Restrict view cache footprint
+            localStorage.setItem('yt_direct_history', JSON.stringify(history));
             renderHistory();
         }
     }
 
     function renderHistory() {
         const list = document.getElementById('historyList');
-        const history = JSON.parse(localStorage.getItem('yt_viewer_history') || '[]');
+        const history = JSON.parse(localStorage.getItem('yt_direct_history') || '[]');
         
         if (history.length === 0) {
-            list.innerHTML = '<li style="color: var(--text-sub); font-size: 0.85rem;">No history items found</li>';
+            list.innerHTML = '<li style="color: var(--text-sub); font-size: 0.85rem;">History empty</li>';
             return;
         }
 
         list.innerHTML = history.map(id => `
-            <li class="history-item" onclick="loadVideo('${id}')" title="Play ID: ${id}">
+            <li class="history-item" onclick="loadVideo('${id}')" title="Stream Video: ${id}">
                 ID: ${id}
             </li>
         `).join('');
     }
 
-    // Auto-render local storage items when page is initialized
     document.addEventListener("DOMContentLoaded", renderHistory);
     
-    // Allow pressing Enter key inside search box to trigger script execution
     document.getElementById('videoUrl').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             loadVideo();
